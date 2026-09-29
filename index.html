@@ -468,13 +468,17 @@ function loadTess(){
     document.head.appendChild(s);
   });
   return tessLoading;
-}
-
-function smartCrop(im,x0,x1,y0,y1,scale=8){
-  const sx=Math.max(0,Math.floor(im.naturalWidth*x0));
-  const ex=Math.min(im.naturalWidth,Math.ceil(im.naturalWidth*x1));
-  const sy=Math.max(0,Math.floor(im.naturalHeight*y0));
-  const ey=Math.min(im.naturalHeight,Math.ceil(im.naturalHeight*y1));
+}function smartCrop(im,x0,x1,y0,y1,scale=8){
+  // The source may be an Image (naturalWidth/naturalHeight) or a canvas
+  // (width/height). warpTable() returns a canvas, so using only natural
+  // dimensions produced invalid, zero-sized crops before OCR.
+  const sourceWidth=im.naturalWidth||im.width;
+  const sourceHeight=im.naturalHeight||im.height;
+  if(!sourceWidth||!sourceHeight) throw new Error('Cannot crop an empty image.');
+  const sx=Math.max(0,Math.floor(sourceWidth*x0));
+  const ex=Math.min(sourceWidth,Math.ceil(sourceWidth*x1));
+  const sy=Math.max(0,Math.floor(sourceHeight*y0));
+  const ey=Math.min(sourceHeight,Math.ceil(sourceHeight*y1));
   const w=Math.max(1,ex-sx),h=Math.max(1,ey-sy);
   const c=document.createElement('canvas');
   c.width=Math.round(w*scale); c.height=Math.round(h*scale);
