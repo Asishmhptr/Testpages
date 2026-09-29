@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PPA Met Coke – RR to Excel</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#f2f4f3; --panel:#ffffff; --ink:#15252c; --muted:#5d6e75; --line:#d6dedc;
+  --accent:#0a6a73; --accent-ink:#ffffff; --ok:#1d7a45; --okbg:#e5f4ea;
+  --warn:#9a6200; --warnbg:#fff3d6; --bad:#b3261e; --badbg:#fde8e6; --head:#e8eeec;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif}
+.num,td.n,input.w{font-variant-numeric:tabular-nums}
+header.top{background:#12303a;color:#fff;padding:14px 24px;display:flex;align-items:baseline;gap:16px;flex-wrap:wrap}
+header.top h1{margin:0;font-size:19px;font-weight:650;letter-spacing:.2px}
+header.top span{color:#b9cfd3;font-size:13px}
+main{max-width:1180px;margin:0 auto;padding:18px 20px 110px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px}
+.drop{border:2px dashed #9bb3b0;background:#fbfdfc;border-radius:6px;padding:22px;text-align:center;cursor:pointer;transition:background .15s,border-color .15s}
+.drop:hover,.drop.over{background:#eaf4f3;border-color:var(--accent)}
+.drop b{font-size:15px}
+.drop small{display:block;color:var(--muted);margin-top:4px}
+details.settings{margin:0 0 14px}
+details.settings summary{cursor:pointer;padding:10px 14px;font-weight:600}
+.settings .body{padding:4px 14px 14px;display:grid;grid-template-columns:200px 1fr;gap:10px 14px;align-items:center;max-width:820px}
+.settings label{color:var(--muted)}
+.settings input,.settings select{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:4px;font:inherit;background:#fff}
+.settings .note{grid-column:1/-1;color:var(--muted);font-size:12.5px}
+.rr{margin-top:18px;overflow:hidden}
+.rr-head{padding:12px 16px;display:flex;flex-wrap:wrap;gap:8px 22px;align-items:center;border-bottom:1px solid var(--line);background:#fafcfb}
+.rr-head h2{margin:0;font-size:17px}
+.rr-head .meta{color:var(--muted)}
+.rr-head .meta b{color:var(--ink);font-weight:600}
+.rr-head .spacer{flex:1}
+.badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600}
+.b-ok{background:var(--okbg);color:var(--ok)} .b-warn{background:var(--warnbg);color:var(--warn)} .b-bad{background:var(--badbg);color:var(--bad)}
+.btn{font:inherit;padding:7px 13px;border-radius:5px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);cursor:pointer;font-weight:600}
+.btn:hover{filter:brightness(1.08)} .btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.ghost{background:#fff;color:var(--accent)}
+.btn.small{padding:4px 9px;font-size:12.5px}
+.link{background:none;border:none;color:var(--accent);cursor:pointer;padding:0;font:inherit;text-decoration:underline}
+.report{padding:14px 16px;border-bottom:1px solid var(--line);background:#fffaf0;display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.report.done{background:#f6faf9}
+.report .txt{flex:1;min-width:260px}
+.report .txt p{margin:2px 0 8px;color:var(--muted)}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap}
+.thumbs img{height:74px;border:1px solid var(--line);border-radius:4px;cursor:zoom-in;background:#fff}
+.progress{height:6px;background:#e5ebe9;border-radius:3px;overflow:hidden;margin-top:8px;width:260px}
+.progress i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+.msg{margin-top:6px;font-size:13px}
+.msg.err{color:var(--bad)}
+.tablewrap{max-height:62vh;overflow:auto}
+table{border-collapse:collapse;width:100%}
+th,td{padding:5px 10px;border-bottom:1px solid #e6ecea;text-align:left;white-space:nowrap}
+th{position:sticky;top:0;background:var(--head);z-index:1;font-weight:600;font-size:12.5px;border-bottom:1px solid var(--line)}
+td.n,th.n{text-align:right}
+td.c,th.c{text-align:center}
+tr.st-ok td.stcell{color:var(--ok)} tr.st-check{background:var(--warnbg)} tr.st-missing{background:var(--badbg)}
+tr.ticked td{opacity:.72}
+input.w{width:82px;padding:3px 6px;border:1px solid #b8c6c3;border-radius:4px;font:inherit;text-align:right;background:#fff}
+input.w.edited{border-color:var(--accent);background:#eef8f8}
+input[type=checkbox]{width:17px;height:17px;accent-color:var(--accent);cursor:pointer}
+tfoot td{font-weight:650;background:#f4f7f6;position:sticky;bottom:0;border-top:1px solid var(--line)}
+.legend{padding:8px 16px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+.dot{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:12px 24px;display:flex;align-items:center;gap:16px;z-index:5;box-shadow:0 -2px 10px rgba(0,0,0,.05)}
+.bar .info{flex:1;color:var(--muted)}
+.bar .info b{color:var(--ink)}
+.empty{color:var(--muted);text-align:center;padding:38px 10px}
+#viewer{position:fixed;inset:0;background:rgba(10,20,24,.86);z-index:20;display:none;flex-direction:column}
+#viewer.on{display:flex}
+#viewer .vbar{display:flex;gap:14px;align-items:center;padding:10px 16px;color:#fff}
+#viewer .vbox{flex:1;overflow:auto;padding:0 16px 16px}
+#viewer img{display:block;width:100%;max-width:none;background:#fff}
+#viewer input[type=range]{width:220px}
+@media (max-width:720px){.settings .body{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>PPA Met Coke – RR to Excel</h1>
+  <span>Upload eT-RR PDFs · wagon report is requested when the RR carries a Sender’s Weight · one sheet per RR</span>
+</header>
+<main>
+  <details class="settings panel" id="settings">
+    <summary>Wagon report reading (OCR) settings</summary>
+    <div class="body">
+      <label for="engine">OCR engine</label>
+      <select id="engine">
+        <option value="ai">AI vision – accurate (needs Anthropic API key)</option>
+        <option value="tess">Offline OCR (Smart table mode) – free, no API key</option>
+      </select>
+      <label for="apikey">Anthropic API key</label>
+      <input id="apikey" type="password" placeholder="sk-ant-…" autocomplete="off">
+      <label for="model">Model</label>
+      <input id="model" type="text" value="claude-sonnet-5">
+      <div class="note">Offline OCR keeps the wagon-report photo in your browser and uses Tesseract.js in Smart table mode. The AI option is optional; if selected, it requires your Anthropic API key. Whichever engine is used, every wagon must be ticked by you before export.</div>
+    </div>
+  </details>
+
+  <div class="drop" id="drop" tabindex="0">
+    <b>Drop RR PDFs here, or click to choose</b>
+    <small>You can select several RRs at once. Each RR becomes one sheet named by its RR number.</small>
+    <input id="pdfin" type="file" accept="application/pdf" multiple hidden>
+  </div>
+
+  <div id="list"><div class="empty">No RR loaded yet.</div></div>
+</main>
+
+<div class="bar">
+  <div class="info" id="barinfo">Nothing to export yet.</div>
+  <button class="btn ghost" id="clear" disabled>Clear all</button>
+  <button class="btn" id="export" disabled>Download Excel</button>
+</div>
+
+<div id="viewer">
+  <div class="vbar">
+    <b id="vtitle">Wagon report</b>
+    <label>Zoom <input type="range" id="vzoom" min="60" max="300" value="100"></label>
+    <span style="flex:1"></span>
+    <button class="btn ghost small" id="vclose">Close</button>
+  </div>
+  <div class="vbox"><img id="vimg" alt="Wagon report"></div>
+</div>
+
+<script>
+/* ---------- RR parsing (pure functions, no DOM) ---------- */
+function rrNormItems(items){
+  // items: pdf.js textContent items -> {s,x,y}
+  const out=[];
+  for(const it of items){
+    if(!it.str || !it.str.trim()) continue;
+    out.push({s:it.str.trim(), x:it.transform[4], y:it.transform[5]});
+  }
+  return out;
+}
+function rrPageText(list){
+  // reading-order text: group by y (desc), sort by x
+  const sorted=list.slice().sort((a,b)=> (Math.abs(a.y-b.y)<1.5? a.x-b.x : b.y-a.y));
+  return sorted.map(t=>t.s).join(' ').replace(/\s+/g,' ');
+}
+function rrSideValue(list,labelRe){
+  // value token to the right of a label on the same line
+  const lab=list.find(t=>labelRe.test(t.s));
+  if(!lab) return null;
+  const cand=list.filter(t=>Math.abs(t.y-lab.y)<2 && t.x>lab.x+1 && /^[\d.,]+$/.test(t.s)).sort((a,b)=>a.x-b.x);
+  return cand.length? cand[0].s : null;
+}
+function parseRR(pages){
+  // pages: array of arrays of {s,x,y}
+  const p1=pages[0]||[];
+  const txt=pages.map(rrPageText).join(' ');
+  const g=(re)=>{const m=txt.match(re);return m?m[1]:''};
+  const head={
+    rrNo:g(/RR No:\s*(\d+)/), rrDate:g(/RR Date:\s*(\d{2}-\d{2}-\d{4})/), fnr:g(/FNR:\s*(\d+)/),
+    from:g(/Station From:\s*([A-Z0-9]+)/), to:g(/Station To:\s*([A-Z0-9]+)/),
+    commodity:g(/Commodity Description:\s*(.*?\))/)
+  };
+  let sw=rrSideValue(p1,/^Sender\s*Weight:?$/i);
+  if(sw===null){const m=rrPageText(p1).match(/Sender\s*Weight:\s*([\d.,]+)/i); sw=m?m[1]:null;}
+  head.senderWeight = sw===null? 0 : (parseFloat(String(sw).replace(/,/g,''))||0);
+
+  // column x positions from the header row of the wagon table
+  let H=null; const wagons=[]; let expected=1; let totals=null;
+  for(let pi=0;pi<pages.length;pi++){
+    const list=pages[pi];
+    if(!H){
+      const hTare=list.find(t=>t.s==='Tare'), hGross=list.find(t=>t.s==='Gross'),
+            hChg=list.find(t=>t.s==='Chargeable'), hSr=list.find(t=>t.s==='Sr');
+      const hCC=list.filter(t=>t.s==='CC' && hTare && Math.abs(t.y-hTare.y)<2).sort((a,b)=>a.x-b.x)[0];
+      if(hTare&&hGross&&hChg&&hSr&&hCC){
+        H={sr:hSr.x, tare:hTare.x, gross:hGross.x, chg:hChg.x, cc:hCC.x, hy:hTare.y};
+      } else continue;
+    }
+    const dataItems=list.filter(t=>t.y<H.hy-1 || pi>0 && !list.some(z=>z.s==='Tare'));
+    // anchors: integer in the Sr column matching the expected serial
+    const isSr=t=>Math.abs(t.x-H.sr)<4 && /^\d{1,4}$/.test(t.s);
+    const cand=dataItems.filter(isSr).sort((a,b)=>b.y-a.y);
+    const anchors=[]; let ex=expected;
+    for(const c of cand){ if(parseInt(c.s,10)===ex){ anchors.push(c); ex++; } }
+    const totalTok=dataItems.find(t=>/^Total:?$/i.test(t.s) && Math.abs(t.x-H.sr)<6);
+    for(let i=0;i<anchors.length;i++){
+      const a=anchors[i];
+      const nextY = i+1<anchors.length ? anchors[i+1].y : (totalTok? totalTok.y : a.y-14);
+      const low = Math.max(nextY+1, a.y-13);
+      const band=[];
+      for(const t of dataItems){
+        if(t.y<=a.y+1 && t.y>low){
+          // split merged items ("BOBRNHSM1 73121446")
+          const parts=t.s.split(/\s+/);
+          parts.forEach((p,k)=>band.push({s:p,x:t.x+(k?0.5*k:0),y:t.y,merged:k>0}));
+        }
+      }
+      wagons.push(rrBuildRow(a,band,H));
+    }
+    expected=ex;
+    if(totalTok){
+      const b=dataItems.filter(t=>t.y<=totalTok.y+1 && t.y>totalTok.y-13);
+      totals=rrColumns(b,H);
+    }
+  }
+  return {head, wagons, totals, hasTable:!!H};
+}
+function rrColumns(band,H){
+  // group right-zone tokens by x column; merge wrapped fragments (e.g. "62." + "2")
+  const right=band.filter(t=>t.x>=H.cc-3).sort((a,b)=>a.x-b.x||b.y-a.y);
+  const cols=[];
+  for(const t of right){
+    const last=cols[cols.length-1];
+    if(last && Math.abs(last.x-t.x)<1.5){ last.items.push(t); }
+    else cols.push({x:t.x,items:[t]});
+  }
+  cols.forEach(c=>{ c.items.sort((a,b)=>b.y-a.y); c.text=c.items.map(i=>i.s).join(''); });
+  const pick=(hx)=>{ const c=cols.find(c=>Math.abs(c.x-hx)<3); return c? c.text : null };
+  return {cc:pick(H.cc),tare:pick(H.tare),gross:pick(H.gross),chg:pick(H.chg)};
+}
+function rrBuildRow(anchor,band,H){
+  const left=band.filter(t=>t.x<H.cc-3 && t!==anchor && !(Math.abs(t.x-H.sr)<4 && t.s===anchor.s));
+  const alpha=left.filter(t=>/[A-Za-z]/.test(t.s)).sort((a,b)=>a.x-b.x);
+  const digits=left.filter(t=>/^\d+$/.test(t.s)).sort((a,b)=>b.y-a.y||a.x-b.x);
+  const cols=rrColumns(band,H);
+  const num=v=>{const n=parseFloat(v);return isNaN(n)?null:n};
+  return {
+    sr:parseInt(anchor.s,10),
+    rly: alpha[0]?alpha[0].s:'',
+    type: alpha[1]?alpha[1].s:'',
+    wagon: digits.map(d=>d.s).join(''),
+    tare:num(cols.tare), chg:num(cols.chg), gross:num(cols.gross), cc:num(cols.cc)
+  };
+}
+
+/* ---------- Wagon report matching ---------- */
+function lev(a,b){
+  const m=a.length,n=b.length; const d=[];
+  for(let i=0;i<=m;i++){d[i]=[i];} for(let j=0;j<=n;j++) d[0][j]=j;
+  for(let i=1;i<=m;i++) for(let j=1;j<=n;j++)
+    d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+  return d[m][n];
+}
+function ocrFixDigits(s){ return s.replace(/[Oo]/g,'0').replace(/[Il|]/g,'1').replace(/S/g,'5').replace(/B/g,'8'); }
+function normNum(tok){
+  // Tesseract often drops the decimal point: 2561 -> 25.61, 674 -> 67.4
+  if(tok==null) return null;
+  let t=String(tok).replace(',','.');
+  if(t.indexOf('.')>=0){ const n=parseFloat(t); return isNaN(n)?null:n; }
+  if(t.length>=3 && t.length<=4){ const n=parseFloat(t.slice(0,2)+'.'+t.slice(2)); return isNaN(n)?null:n; }
+  return null;
+}
+/* Tesseract path: lines = array of OCR text lines */
+function matchWagonLines(lines, rrWagons){
+  const parsed=lines.map(ln=>{ const fixed=ocrFixDigits(ln); return {ln,fixed,runs:fixed.match(/\d{9,13}/g)||[]}; });
+  const res={};
+  for(const w of rrWagons){
+    let best=null;
+    for(const p of parsed) for(const c of p.runs){
+      for(let o=0;o<=Math.max(0,c.length-11);o++){
+        const win=c.slice(o,o+11); if(win.length<9) continue;
+        const dist=lev(win,w);
+        if(dist<=2 && (!best||dist<best.dist)) best={dist,p,c,o};
+      }
+    }
+    if(best){
+      const idx=best.p.fixed.indexOf(best.c)+best.c.length;
+      const nums=(best.p.fixed.slice(idx).match(/\d+(?:[.,]\d+)?/g)||[]);
+      res[w]={tare:normNum(nums[0]),gross:normNum(nums[1]),actual:normNum(nums[3]),dist:best.dist};
+    }
+  }
+  return res;
+}
+/* AI path: rows = [{wagon,tare,gross,actual}] */
+function matchAIRows(rows, rrWagons){
+  const res={}; const digits=s=>String(s==null?'':s).replace(/\D/g,'');
+  const num=v=>{const n=parseFloat(v);return isNaN(n)?null:n};
+  const list=rows.map(r=>({w:digits(r.wagon),tare:num(r.tare),gross:num(r.gross),actual:num(r.actual)}));
+  const left=new Set(rrWagons);
+  for(const r of list){ if(left.has(r.w)){ res[r.w]={tare:r.tare,gross:r.gross,actual:r.actual,dist:0}; left.delete(r.w);} }
+  for(const r of list){
+    if(res[r.w]) continue;
+    let best=null,ties=0;
+    for(const w of left){ const d=lev(r.w,w); if(d<=2){ if(!best||d<best.d){best={d,w};ties=0;} else if(d===best.d) ties++; } }
+    if(best && !ties){ res[best.w]={tare:r.tare,gross:r.gross,actual:r.actual,dist:best.d}; left.delete(best.w); }
+  }
+  return res;
+}
+/* status of a wagon row in wagon-report mode */
+function rowStatus(w){
+  if(!w.rep) return 'missing';
+  if(w.tare==null||w.gross==null) return 'missing';
+  if(w.rep.actual==null) return 'check';
+  return Math.abs((w.gross-w.tare)-w.rep.actual)<=0.06 && w.rep.dist===0 ? 'ok' : 'check';
+}
+/* ---------- Excel ---------- */
+function uniqueSheetName(name,used){
+  let base=String(name).replace(/[\\\/\?\*\[\]:]/g,'_').slice(0,31)||'RR';
+  let n=base,i=2; while(used.has(n.toLowerCase())){ const suf='_'+i++; n=base.slice(0,31-suf.length)+suf; }
+  used.add(n.toLowerCase()); return n;
+}
+function buildWorkbook(XLSX, rrs){
+  const wb=XLSX.utils.book_new(); const used=new Set();
+  for(const rr of rrs){
+    const rows=[['Wagon Number','Type','Owning Rly','Tare','Chargeable Wt','Gross']];
+    for(const w of rr.wagons){
+      const wn=/^\d+$/.test(w.wagon)?Number(w.wagon):w.wagon;
+      rows.push([wn,w.type,w.rly,w.tare,w.chg,w.gross]);
+    }
+    const ws=XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols']=[{wch:16},{wch:12},{wch:11},{wch:9},{wch:14},{wch:9}];
+    for(let r=1;r<rows.length;r++){
+      const a=ws[XLSX.utils.encode_cell({r,c:0})]; if(a&&typeof a.v==='number') a.z='0';
+    }
+    XLSX.utils.book_append_sheet(wb,ws,uniqueSheetName(rr.head.rrNo||('RR'+(used.size+1)),used));
+  }
+  return wb;
+}
+if(typeof module!=='undefined') module.exports={parseRR,rrNormItems,matchWagonLines,matchAIRows,rowStatus,buildWorkbook,normNum,lev};
+
+</script>
+<script>
+(function(){
+'use strict';
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+const $=s=>document.querySelector(s);
+const state={rrs:[]}; let uid=0;
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt=(v,d=2)=>v==null||isNaN(v)?'':(+v).toFixed(d).replace(/\.?0+$/,m=>m.length>1&&d>0&&/^\.0+$/.test(m)?'':m);
+const f2=v=>v==null||isNaN(v)?'—':(+v).toFixed(2);
+
+/* ---------- settings ---------- */
+try{
+  $('#engine').value=localStorage.getItem('ppa_engine')||'tess';
+  $('#apikey').value=localStorage.getItem('ppa_key')||'';
+  $('#model').value=localStorage.getItem('ppa_model')||'claude-sonnet-5';
+}catch(e){}
+if(!$('#apikey').value && $('#engine').value==='ai') $('#settings').open=true;
+['engine','apikey','model'].forEach(id=>$('#'+id).addEventListener('change',()=>{
+  try{localStorage.setItem('ppa_engine',$('#engine').value);localStorage.setItem('ppa_key',$('#apikey').value.trim());localStorage.setItem('ppa_model',$('#model').value.trim());}catch(e){}
+}));
+
+/* ---------- RR upload ---------- */
+const drop=$('#drop'), pdfin=$('#pdfin');
+drop.addEventListener('click',()=>pdfin.click());
+drop.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pdfin.click();}});
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over');}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over');}));
+drop.addEventListener('drop',e=>handlePdfs([...e.dataTransfer.files]));
+pdfin.addEventListener('change',()=>{handlePdfs([...pdfin.files]);pdfin.value='';});
+
+async function handlePdfs(files){
+  files=files.filter(f=>/\.pdf$/i.test(f.name)||f.type==='application/pdf');
+  for(const f of files){
+    try{
+      const buf=new Uint8Array(await f.arrayBuffer());
+      const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+      const pages=[];
+      for(let i=1;i<=pdf.numPages;i++){const p=await pdf.getPage(i);const tc=await p.getTextContent();pages.push(rrNormItems(tc.items));}
+      const r=parseRR(pages);
+      if(!r.hasTable||!r.wagons.length||!r.head.rrNo) throw new Error('This PDF does not look like an eT-RR with a wagon table.');
+      if(state.rrs.some(x=>x.head.rrNo===r.head.rrNo)){ alert('RR '+r.head.rrNo+' is already loaded – skipped ('+f.name+').'); continue; }
+      const needReport=r.head.senderWeight>0;
+      const rr={id:++uid,file:f.name,head:r.head,totals:r.totals,needReport,useReport:needReport,
+        images:[],ocr:{running:false,pct:0,msg:'',err:''},
+        wagons:r.wagons.map(w=>({sr:w.sr,wagon:w.wagon,type:w.type,rly:w.rly,chg:w.chg,rrTare:w.tare,rrGross:w.gross,
+                                 tare:w.tare,gross:w.gross,rep:null,ok:false,edited:false}))};
+      state.rrs.push(rr);
+    }catch(err){
+      state.rrs.push({id:++uid,file:f.name,error:String(err.message||err),head:{rrNo:''},wagons:[]});
+    }
+    render();
+  }
+}
+
+/* ---------- wagon report images ---------- */
+function attachImages(rr,files){
+  files=files.filter(f=>/^image\//.test(f.type)||/\.(jpe?g|png|webp|bmp)$/i.test(f.name));
+  if(!files.length) return;
+  files.forEach(f=>rr.images.push({file:f,url:URL.createObjectURL(f)}));
+  runOcr(rr);
+}
+async function loadImage(url){
+  return new Promise((res,rej)=>{const im=new Image();im.onload=()=>res(im);im.onerror=()=>rej(new Error('Could not open image'));im.src=url;});
+}
+function canvasOf(im,maxDim){
+  const s=Math.min(1,maxDim/Math.max(im.naturalWidth,im.naturalHeight));
+  const c=document.createElement('canvas');c.width=Math.round(im.naturalWidth*s);c.height=Math.round(im.naturalHeight*s);
+  const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(im,0,0,c.width,c.height);return c;
+}
+
+async function runOcr(rr){
+  rr.ocr={running:true,pct:2,msg:'Reading wagon report…',err:''}; render();
+  // As soon as we're reading a wagon report, the RR's own Gross Wt(T) figure
+  // (Tare+CC, printed only because the sender's weight was accepted rather
+  // than actually weighed) must never be left sitting in the table looking
+  // like a captured reading. Clear it up front so a failed/partial OCR run
+  // shows blank, clearly-unconfirmed cells instead of that placeholder.
+  rr.wagons.forEach(w=>{ w.rep=null; w.tare=null; w.gross=null; w.ok=false; w.edited=false; });
+  const engine=$('#engine').value;
+  const rrW=rr.wagons.map(w=>w.wagon);
+  let merged={}; let failures=0;
+  for(let i=0;i<rr.images.length;i++){
+    try{
+      const im=await loadImage(rr.images[i].url);
+      const found=engine==='ai' ? await ocrAI(rr,im,rrW,i) : await ocrTess(rr,im,rrW,i);
+      Object.keys(found).forEach(k=>{ if(!merged[k]||merged[k].dist>found[k].dist) merged[k]=found[k]; });
+    }catch(err){
+      failures++;
+      console.error('Wagon report OCR failed for photo '+(i+1)+':',err);
+    }
+  }
+  let hit=0;
+  rr.wagons.forEach(w=>{
+    const m=merged[w.wagon];
+    if(m){ hit++; w.rep=m; w.tare=m.tare; w.gross=m.gross; }
+  });
+  if(failures && !hit){
+    rr.ocr={running:false,pct:0,msg:'',err:'Reading the wagon report failed ('+failures+' of '+rr.images.length+' photo'+(rr.images.length>1?'s':'')+'). Nothing was captured — try again, retake/re-add the photo, or switch OCR engine under settings. Tare and Gross are left blank below; do not assume they are correct.'};
+  } else if(failures){
+    rr.ocr={running:false,pct:100,msg:'Matched '+hit+' of '+rr.wagons.length+' RR wagons, but reading failed for '+failures+' photo'+(failures>1?'s':'')+' — some rows below may still be blank.',err:''};
+  } else {
+    rr.ocr={running:false,pct:100,msg:'Matched '+hit+' of '+rr.wagons.length+' RR wagons in the wagon report.',err:''};
+  }
+  render();
+}
+
+/* --- AI vision --- */
+async function ocrAI(rr,im,rrW,idx){
+  const key=$('#apikey').value.trim();
+  if(!key) throw new Error('Add your Anthropic API key under “Wagon report reading (OCR) settings”, or switch to Offline OCR.');
+  const c=canvasOf(im,2400);
+  const b64=c.toDataURL('image/jpeg',0.92).split(',')[1];
+  rr.ocr.msg='Sending wagon report '+(idx+1)+' to AI vision…'; rr.ocr.pct=15; render();
+  const prompt=
+'This is a photo of a railway wagon weighment report ("The Wagons, as mentioned below, have been loaded and may be drawn out"). '+
+'Read EVERY wagon row of the table. For each row return: sl (Sl.No), wagon (the 11-digit Wagon No exactly as printed), '+
+'tare (Tare Weight column), gross (Gross Weigh(Actual) column), actual (the "Actual Weight" column, right after CC/P CC). '+
+'Decimals are printed as shown (e.g. 25.61, 67.4, 41.79). Empty/unfit wagons where tare equals gross must still be listed with their printed values. '+
+'Read every digit carefully; do not guess or fix numbers, return what is printed. For reference only, the wagons expected on this rake are: '+rrW.join(', ')+'. '+
+'Reply with ONLY minified JSON, no markdown: {"rows":[{"sl":1,"wagon":"73121446590","tare":25.61,"gross":67.4,"actual":41.79}]}';
+  const resp=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:$('#model').value.trim()||'claude-sonnet-5',max_tokens:8000,
+      messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:prompt}]}]})
+  });
+  if(!resp.ok){ let t='';try{t=(await resp.json()).error.message}catch(e){} throw new Error('AI vision request failed ('+resp.status+'). '+t); }
+  const data=await resp.json();
+  const text=(data.content||[]).map(x=>x.type==='text'?x.text:'').join('');
+  const m=text.replace(/```json|```/g,'').match(/\{[\s\S]*\}/);
+  if(!m) throw new Error('AI vision did not return readable JSON.');
+  const rows=JSON.parse(m[0]).rows||[];
+  rr.ocr.pct=90; render();
+  return matchAIRows(rows,rrW);
+}
+
+/* --- Tesseract smart table OCR --- */
+let tessLoading=null;
+function loadTess(){
+  if(window.Tesseract) return Promise.resolve();
+  if(tessLoading) return tessLoading;
+  tessLoading=new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/tesseract.js@4.1.4/dist/tesseract.min.js';
+    s.onload=res;
+    s.onerror=()=>rej(new Error('Could not load the OCR library (needs internet on first use).'));
+    document.head.appendChild(s);
+  });
+  return tessLoading;
+}
+
+function smartCrop(im,x0,x1,y0,y1,scale=8){
+  const sx=Math.max(0,Math.floor(im.naturalWidth*x0));
+  const ex=Math.min(im.naturalWidth,Math.ceil(im.naturalWidth*x1));
+  const sy=Math.max(0,Math.floor(im.naturalHeight*y0));
+  const ey=Math.min(im.naturalHeight,Math.ceil(im.naturalHeight*y1));
+  const w=Math.max(1,ex-sx),h=Math.max(1,ey-sy);
+  const c=document.createElement('canvas');
+  c.width=Math.round(w*scale); c.height=Math.round(h*scale);
+  const g=c.getContext('2d');
+  g.imageSmoothingEnabled=true; g.imageSmoothingQuality='high';
+  g.fillStyle='#fff'; g.fillRect(0,0,c.width,c.height);
+  g.drawImage(im,sx,sy,w,h,0,0,c.width,c.height);
+  return c;
+}
+
+function tessLineList(data){
+  if(data && Array.isArray(data.lines) && data.lines.length){
+    return data.lines.map(l=>({
+      text:String(l.text||'').trim(),
+      y:((l.bbox?.y0??l.bbox?.top??0)+(l.bbox?.y1??l.bbox?.bottom??0))/2
+    })).filter(l=>l.text);
+  }
+  const groups=new Map();
+  (data?.words||[]).forEach(w=>{
+    const t=String(w.text||'').trim(); if(!t) return;
+    const key=[w.block_num,w.par_num,w.line_num].join('/');
+    if(!groups.has(key)) groups.set(key,[]);
+    groups.get(key).push(w);
+  });
+  return [...groups.values()].map(ws=>({
+    text:ws.map(w=>w.text).join(' ').trim(),
+    y:Math.min(...ws.map(w=>w.bbox?.y0??w.top??0))+Math.max(...ws.map(w=>w.bbox?.height??w.height??0))/2
+  })).filter(l=>l.text);
+}
+
+function medianNum(a){
+  const v=a.filter(Number.isFinite).slice().sort((x,y)=>x-y);
+  if(!v.length) return null;
+  const m=Math.floor(v.length/2);
+  return v.length%2?v[m]:(v[m-1]+v[m])/2;
+}
+
+function rowMap(lines,n){
+  // Kept for fallback/debug use. The actual smart OCR now anchors every
+  // value column to the wagon-number rows, which prevents the header row
+  // from shifting all extracted values by one row.
+  const ls=lines.slice().sort((a,b)=>a.y-b.y);
+  if(!ls.length) return [];
+  const ys=ls.map(x=>x.y);
+  const diffs=[];
+  for(let i=1;i<ys.length;i++){
+    const d=ys[i]-ys[i-1];
+    if(d>20 && d<300) diffs.push(d);
+  }
+  const step=medianNum(diffs)||((ys[ys.length-1]-ys[0])/Math.max(1,n-1));
+  const first=ys[0];
+  return ls.map(l=>({
+    ...l,
+    row:Math.max(0,Math.min(n-1,Math.round((l.y-first)/step)))
+  }));
+}
+
+// Build row anchors from the wagon-number OCR. This is the important part:
+// the report header is ignored and each Tare/Gross/Actual value is attached
+// to the physical row containing its corresponding wagon number.
+function buildWagonAnchors(lines,rrWagons){
+  const src=lines.slice().sort((a,b)=>a.y-b.y);
+  const anchors=[];
+  const used=new Set();
+  for(let r=0;r<rrWagons.length;r++){
+    let best=null;
+    for(let i=0;i<src.length;i++){
+      if(used.has(i)) continue;
+      const w=smartWagonFromLine(src[i].text,rrWagons[r]);
+      if(!w) continue;
+      const d=lev(w,rrWagons[r]);
+      if(!best || d<best.d) best={i,y:src[i].y,d};
+    }
+    if(best){
+      used.add(best.i);
+      anchors.push({row:r,y:best.y,wagon:rrWagons[r],dist:best.d});
+    }
+  }
+  return anchors;
+}
+
+// Build the PHYSICAL wagon rows in the scanned report.  This is deliberately
+// independent of the RR wagon count.  A weighment report can contain more
+// placed wagons than the RR has loaded wagons (e.g. 60 placed / 55 loaded),
+// and the five zero rows may occur anywhere in the 60 physical rows.
+//
+// Tesseract usually sees almost every printed wagon-number line even when it
+// cannot read the digits perfectly.  We use those line Y positions only as
+// row anchors.  Large gaps reveal missed OCR lines, which are interpolated.
+function buildPhysicalRows(lines, cropBox, im, minRows){
+  const src=lines.slice().sort((a,b)=>a.y-b.y);
+  let ys=[];
+  for(const l of src){
+    const digits=String(l.text||'').replace(/\D/g,'');
+    if(digits.length>=7) ys.push(l.y);
+  }
+  // De-duplicate nearly identical line centres.
+  const clean=[];
+  for(const y of ys){ if(!clean.length || Math.abs(y-clean[clean.length-1])>20) clean.push(y); }
+  if(clean.length<2) return [];
+
+  const ds=[];
+  for(let i=1;i<clean.length;i++){
+    const d=clean[i]-clean[i-1];
+    if(d>50) ds.push(d);
+  }
+  const step=medianNum(ds)||((clean[clean.length-1]-clean[0])/Math.max(1,clean.length-1));
+  if(!step) return [];
+
+  const full=[];
+  for(let i=0;i<clean.length-1;i++){
+    full.push(clean[i]);
+    const gap=clean[i+1]-clean[i];
+    const missing=Math.max(0,Math.round(gap/step)-1);
+    for(let k=1;k<=missing;k++) full.push(clean[i]+gap*k/(missing+1));
+  }
+  full.push(clean[clean.length-1]);
+
+  // If OCR missed several lines, extend from the observed spacing until the
+  // visible table is represented.  Do not force it to the RR count: the
+  // physical report count is intentionally allowed to be larger.
+  const first=full[0], last=full[full.length-1];
+  const expected=Math.max(minRows||0,Math.round((last-first)/step)+1);
+  if(full.length<expected){
+    const ext=[];
+    for(let r=0;r<expected;r++) ext.push(first+(last-first)*r/Math.max(1,expected-1));
+    return ext.map((y,i)=>({row:i,yFrac:cropBox.y0+(y/cropBox.scale)/im.naturalHeight}));
+  }
+  return full.map((y,i)=>({row:i,yFrac:cropBox.y0+(y/cropBox.scale)/im.naturalHeight}));
+}
+
+// Keep the old anchor-fit helpers available for debugging/legacy callers, but
+// the live OCR path below no longer maps 55 RR rows directly onto the scan.
+function fitRowLine(anchors,n){
+  const good=anchors.filter(a=>a.dist<=1);
+  const pool=(good.length>=4?good:anchors).slice().sort((p,q)=>p.row-q.row);
+  if(pool.length<2) return null;
+  const spacings=[];
+  for(let i=0;i<pool.length;i++) for(let j=i+1;j<pool.length;j++){
+    const dr=pool[j].row-pool[i].row; if(dr<1||dr>8) continue;
+    if(Number.isFinite(pool[j].yFrac)&&Number.isFinite(pool[i].yFrac)) spacings.push((pool[j].yFrac-pool[i].yFrac)/dr);
+  }
+  const a=medianNum(spacings); if(a==null) return null;
+  const offsets=pool.map(p=>p.yFrac-p.row*a);
+  const b=medianNum(offsets);
+  return {a,b};
+}
+
+function mapLinesToAnchors(lines,anchors,kind){
+  const src=lines.slice().sort((a,b)=>a.y-b.y);
+  if(!anchors.length) return [];
+  const out=[];
+  const ys=anchors.map(a=>a.y);
+  let typical=0;
+  if(ys.length>1){
+    const ds=[]; for(let i=1;i<ys.length;i++){const d=ys[i]-ys[i-1];if(d>2)ds.push(d);} typical=medianNum(ds)||0; }
+  const maxDist=typical?Math.max(typical*0.48,18):35;
+  for(const l of src){
+    let best=null;
+    for(const a of anchors){
+      const d=Math.abs(l.y-a.y);
+      if(d<=maxDist && (!best||d<best.d)) best={row:a.row,d};
+    }
+    if(best) out.push({...l,row:best.row});
+  }
+  return out;
+}
+
+function digitWindows(s){
+  const fixed=ocrFixDigits(String(s||''));
+  const runs=fixed.match(/\d{7,15}/g)||[];
+  const out=[];
+  for(const r of runs){
+    out.push(r);
+    for(let len=9;len<=13;len++) if(r.length>=len)
+      for(let i=0;i<=r.length-len;i++) out.push(r.slice(i,i+len));
+  }
+  return [...new Set(out)];
+}
+
+function numCandidates(s){
+  const fixed=ocrFixDigits(String(s||'')).replace(/,/g,'.');
+  return fixed.match(/\d+(?:\.\d+)?/g)||[];
+}
+
+function smartNumber(s){
+  const c=numCandidates(s);
+  if(!c.length) return null;
+  let t=c[c.length-1];
+  let n=parseFloat(t);
+  if(!Number.isFinite(n)) return null;
+  if(!t.includes('.') && /^\d{3,4}$/.test(t)){
+    n=parseFloat(t.slice(0,2)+'.'+t.slice(2));
+  }
+  return Number.isFinite(n)?n:null;
+}
+
+function smartWagonFromLine(text,expected){
+  const ex=String(expected||'').replace(/\D/g,'');
+  if(!ex) return null;
+  let best=null;
+  for(const c of digitWindows(text)){
+    const d=lev(c,ex);
+    if(!best||d<best.d||(d===best.d&&Math.abs(c.length-ex.length)<Math.abs(best.c.length-ex.length))) best={c,d};
+  }
+  return best && best.d<=3 ? best.c : null;
+}
+
+// Normalise ONE numeric token (not "pick the last token in a string" like
+// smartNumber — here we already know which token we want by its position).
+function normToken(tok){
+  if(tok==null) return null;
+  const t=String(tok);
+  if(t.includes('.')){ const n=parseFloat(t); return Number.isFinite(n)?n:null; }
+  if(/^\d{3,4}$/.test(t)){ const n=parseFloat(t.slice(0,2)+'.'+t.slice(2)); return Number.isFinite(n)?n:null; }
+  const n=parseFloat(t); return Number.isFinite(n)?n:null;
+}
+
+// A phone photo of a full-width page is rarely a pure 2D rotation — it is a
+// genuine perspective/keystone distortion, so the "tilt" of the table rows
+// is not constant across the page. A single tall crop per NUMBER COLUMN
+// (spanning every row top-to-bottom) silently assumes one fixed x-range is
+// correct at every y — true near wherever that box was calibrated, wrong
+// further away. That is what produced the corrupted/rounded "Actual"
+// readings lower down the table. The fix: crop one THIN band PER ROW,
+// positioned from that row's own wagon-number anchor, wide enough to catch
+// Tare/Gross/CC/Actual TOGETHER. Within a ~20px-tall band, local distortion
+// is negligible even when the page-wide skew is not.
+//
+// The row is read as TWO narrow crops rather than one wide one: Tesseract's
+// single-line mode reads a short, tight number cleanly, but a wide crop
+// spanning several columns with large blank gaps between them behaves less
+// like "one line of text" and drops or garbles the earlier numbers.
+// Tare+Gross sit right next to each other (one crop); Actual Weight sits
+// across the P/CC gap (a second crop).
+// Perspective-correct the printed wagon table before OCR.  The phone photo
+// is a keystone/trapezoid, so the column positions move substantially from
+// the top of the page to the bottom.  A single fixed crop (or even a simple
+// linear x shift) is not enough.  This small 4-point homography keeps the
+// table rectangular and makes every row use the same column coordinates.
+function solve8(A,b){
+  const m=A.map((r,i)=>r.slice().concat([b[i]]));
+  for(let c=0;c<8;c++){
+    let p=c;
+    for(let r=c+1;r<8;r++) if(Math.abs(m[r][c])>Math.abs(m[p][c])) p=r;
+    if(Math.abs(m[p][c])<1e-12) return null;
+    if(p!==c){const q=m[p];m[p]=m[c];m[c]=q;}
+    const div=m[c][c]; for(let j=c;j<=8;j++) m[c][j]/=div;
+    for(let r=0;r<8;r++) if(r!==c){const f=m[r][c];if(!f)continue;for(let j=c;j<=8;j++)m[r][j]-=f*m[c][j];}
+  }
+  return m.map(r=>r[8]);
+}
+function homography(src,dst){
+  const A=[],b=[];
+  for(let i=0;i<4;i++){
+    const x=src[i][0],y=src[i][1],u=dst[i][0],v=dst[i][1];
+    A.push([x,y,1,0,0,0,-u*x,-u*y]); b.push(u);
+    A.push([0,0,0,x,y,1,-v*x,-v*y]); b.push(v);
+  }
+  const q=solve8(A,b); if(!q) return null;
+  return [q[0],q[1],q[2],q[3],q[4],q[5],q[6],q[7],1];
+}
+function inv3(H){
+  const [a,b,c,d,e,f,g,h,i]=H;
+  const A=e*i-f*h, B=c*h-b*i, C=b*f-c*e;
+  const D=f*g-d*i, E=a*i-c*g, F=c*d-a*f;
+  const G=d*h-e*g, J=b*g-a*h, K=a*e-b*d;
+  const det=a*A+b*D+c*G;
+  if(Math.abs(det)<1e-12) return null;
+  return [A/det,B/det,C/det,D/det,E/det,F/det,G/det,J/det,K/det];
+}
+function warpTable(im){
+  const W=im.naturalWidth,H=im.naturalHeight;
+  // Table corners for the photographed PPA wagon report layout.  They are
+  // intentionally expressed as fractions so different camera resolutions
+  // work the same way.
+  const src=[[0.055,0.112],[0.868,0.112],[0.872,0.799],[0.055,0.799]].map(p=>[p[0]*W,p[1]*H]);
+  const outW=1200;
+  const outH=Math.round(outW*(0.687/0.813));
+  const dst=[[0,0],[outW,0],[outW,outH],[0,outH]];
+  const Hm=homography(src,dst), Hi=Hm&&inv3(Hm);
+  if(!Hi) return null;
+  const c=document.createElement('canvas'); c.width=outW; c.height=outH;
+  const g=c.getContext('2d');
+  const out=g.createImageData(outW,outH), od=out.data;
+  const temp=document.createElement('canvas'); temp.width=W; temp.height=H;
+  const tg=temp.getContext('2d'); tg.drawImage(im,0,0);
+  const sd=tg.getImageData(0,0,W,H).data;
+  const [a,b,c0,d,e,f,g0,h,i]=Hi;
+  for(let y=0;y<outH;y++){
+    for(let x=0;x<outW;x++){
+      const den=g0*x+h*y+i;
+      const sx=(a*x+b*y+c0)/den, sy=(d*x+e*y+f)/den;
+      const k=(y*outW+x)*4;
+      if(sx>=0&&sy>=0&&sx<W-1&&sy<H-1){
+        const x0=sx|0,y0=sy|0,fx=sx-x0,fy=sy-y0;
+        const p00=(y0*W+x0)*4,p10=p00+4,p01=p00+W*4,p11=p01+4;
+        for(let ch=0;ch<4;ch++){
+          const v=sd[p00+ch]*(1-fx)*(1-fy)+sd[p10+ch]*fx*(1-fy)+sd[p01+ch]*(1-fx)*fy+sd[p11+ch]*fx*fy;
+          od[k+ch]=v;
+        }
+      } else {od[k]=od[k+1]=od[k+2]=255;od[k+3]=255;}
+    }
+  }
+  g.putImageData(out,0,0); return c;
+}
+
+// The photographed sheet is a trapezoid: the table's vertical column
+// boundaries move to the right as we go down the page.  Using one fixed x
+// range therefore works near the top and progressively reads the wrong
+// column lower down.  These are the normalized top/bottom boundary positions
+// of the printed wagon table on this report style; interpolate them per row.
+const TABLE_X_TOP={tareL:0.397,tareR:0.468,grossL:0.468,grossR:0.584,actualL:0.669,actualR:0.745};
+const TABLE_X_BOTTOM={tareL:0.423,tareR:0.501,grossL:0.501,grossR:0.622,actualL:0.716,actualR:0.793};
+function lerp(a,b,t){return a+(b-a)*t;}
+function fieldBoxAt(yFrac,field){
+  const t=Math.max(0,Math.min(1,(yFrac-0.113)/(0.800-0.113)));
+  const L=TABLE_X_TOP[field+'L'], R=TABLE_X_TOP[field+'R'];
+  const L2=TABLE_X_BOTTOM[field+'L'], R2=TABLE_X_BOTTOM[field+'R'];
+  return {x0:lerp(L,L2,t),x1:lerp(R,R2,t)};
+}
+
+function rowFieldCrop(im,yFrac,rowSpacingFrac,x0,x1,scale){
+  // Keep the band tight enough to avoid neighbouring printed rows.  The old
+  // 0.46 factor routinely included both horizontal grid lines, which made
+  // Tesseract prefer a line fragment over the number itself.
+  const half=Math.max(rowSpacingFrac*0.34,0.0035);
+  return smartCrop(im,x0,x1,Math.max(0,yFrac-half),Math.min(1,yFrac+half),scale);
+}
+
+function fieldTokens(text){
+  const fixed=ocrFixDigits(String(text||'')).replace(/,/g,'.');
+  return fixed.match(/\d+(?:\.\d+)?/g)||[];
+}
+
+function fieldNumber(text,lo,hi){
+  const vals=[];
+  for(const t of fieldTokens(text)){
+    const n=normToken(t);
+    if(n!=null && n>=lo && n<=hi) vals.push(n);
+  }
+  return vals.length?vals[vals.length-1]:null;
+}
+
+function readTG(text){
+  const vals=fieldTokens(text).map(normToken).filter(v=>v!=null&&v>=15&&v<=95);
+  if(!vals.length) return {tare:null,gross:null};
+  if(vals.length===1){
+    // Values in the 50–95 range are overwhelmingly Gross.  Smaller values
+    // can be either column; retain them as Tare and let the Gross fallback
+    // pass below resolve the second column.
+    return vals[0]>45?{tare:null,gross:vals[0]}:{tare:vals[0],gross:null};
+  }
+  // Prefer a physically sensible Tare/Gross pair.
+  for(let i=0;i<vals.length;i++) for(let j=i+1;j<vals.length;j++){
+    if(vals[j]+0.25>=vals[i] && vals[i]>=15 && vals[i]<=45)
+      return {tare:vals[i],gross:vals[j]};
+  }
+  return {tare:vals[0]<=45?vals[0]:null,gross:vals[vals.length-1]};
+}
+
+function isZeroPhysicalRow(v){
+  if(v==null) return false;
+  if(v.actual!=null && Math.abs(v.actual)<=0.15) return true;
+  if(v.tare!=null && v.gross!=null && Math.abs(v.gross-v.tare)<=0.20) return true;
+  return false;
+}
+
+let rrOcrProgressHook=null;
+
+function withTimeout(promise, ms, label){
+  return Promise.race([
+    promise,
+    new Promise((_,rej)=>setTimeout(()=>rej(new Error(label+' timed out after '+Math.round(ms/1000)+' seconds. Check your internet connection, then reload the HTML and try again.')),ms))
+  ]);
+}
+
+async function ocrTess(rr,im,rrW,idx){
+  rr.ocr.msg='Loading Tesseract OCR library…'; rr.ocr.pct=5; render();
+  await withTimeout(loadTess(),30000,'Tesseract library loading');
+  if(!window.Tesseract || typeof Tesseract.createWorker!=='function') throw new Error('Tesseract.js loaded, but the OCR worker API is unavailable. Reload the page and try again.');
+
+  rr.ocr.msg='Starting offline OCR engine…'; rr.ocr.pct=8; render();
+  let worker=null;
+  try{
+    // Pin all browser-side Tesseract components to the same v5.1.1 release.
+    // Explicit paths avoid the worker/core auto-discovery problem that can
+    // leave a local HTML file apparently stuck at the loading message.
+    // Use the v4 browser worker API here. It is deliberately kept as a
+    // compatibility path because this application is opened directly as a
+    // local HTML file, where some v5 browser builds can remain at
+    // "initializing api" while loading the WASM runtime.
+    const workerOptions={
+      workerPath:'https://cdn.jsdelivr.net/npm/tesseract.js@4.1.4/dist/worker.min.js',
+      corePath:'https://cdn.jsdelivr.net/npm/tesseract.js-core@4.0.4',
+      langPath:'https://tessdata.projectnaptha.com/4.0.0',
+      logger:m=>{
+        const pct=Number.isFinite(m?.progress)?m.progress:0;
+        const label=String(m?.status||'Starting OCR engine').replace(/_/g,' ');
+        rr.ocr.pct=Math.max(8,Math.min(18,8+pct*10));
+        rr.ocr.msg='Offline OCR: '+label+'…';
+        render();
+      }
+    };
+    worker=await withTimeout(Tesseract.createWorker(workerOptions),30000,'Tesseract worker creation');
+    rr.ocr.msg='Offline OCR: loading English OCR data…'; rr.ocr.pct=12; render();
+    await withTimeout(worker.loadLanguage('eng'),60000,'English OCR data loading');
+    await withTimeout(worker.initialize('eng'),60000,'Tesseract engine initialization');
+    rr.ocr.msg='Offline OCR: engine ready.'; rr.ocr.pct=18; render();
+  }catch(err){
+    throw new Error('Offline OCR engine could not start. '+(err?.message||err)+' Keep internet enabled on the first run so the browser can download the OCR engine and English data, then retry.');
+  }
+  const n=rrW.length;
+  try{
+    rrOcrProgressHook=(pct,msg)=>{rr.ocr.pct=pct;rr.ocr.msg=msg;render();};
+
+    // 1) Remove the page perspective first. This is the key fix for the
+    // photographed report: after warping, row/column geometry stays stable
+    // from row 1 through row 60.
+    const table=warpTable(im);
+    if(!table) throw new Error('Could not perspective-correct the wagon table.');
+    const TW=table.width, TH=table.height;
+
+    // The table image contains the header followed by the physical wagon
+    // rows. The sample report has 60 placed rows and 55 loaded rows. Detect
+    // the physical count from the wagon-number column, independently of the
+    // RR count, so zero rows can be skipped without shifting everything.
+    await worker.setParameters({tessedit_pageseg_mode:'6',tessedit_char_whitelist:'0123456789',preserve_interword_spaces:'1'});
+    const wagonCrop=smartCrop(table,0.075,0.205,0.005,0.985,4);
+    const wo=await worker.recognize(wagonCrop);
+    const wl=tessLineList(wo.data).filter(l=>String(l.text).replace(/\D/g,'').length>=7).sort((a,b)=>a.y-b.y);
+    const ys=[];
+    for(const l of wl){ if(!ys.length||Math.abs(l.y-ys[ys.length-1])>35) ys.push(l.y); }
+    if(ys.length<2) throw new Error('Could not detect the physical wagon rows.');
+    const diffs=ys.slice(1).map((y,i)=>y-ys[i]).filter(d=>d>20);
+    const step=medianNum(diffs); if(!step) throw new Error('Could not determine wagon row spacing.');
+    const phys=[];
+    for(let i=0;i<ys.length-1;i++){
+      phys.push(ys[i]);
+      const gap=ys[i+1]-ys[i], miss=Math.max(0,Math.round(gap/step)-1);
+      for(let k=1;k<=miss;k++) phys.push(ys[i]+gap*k/(miss+1));
+    }
+    phys.push(ys[ys.length-1]);
+    const physicalCount=Math.max(n,Math.round((phys[phys.length-1]-phys[0])/step)+1);
+    while(phys.length<physicalCount) phys.push(phys[phys.length-1]+step);
+    const firstY=phys[0], lastY=phys[physicalCount-1];
+    const centers=Array.from({length:physicalCount},(_,r)=>firstY+(lastY-firstY)*r/Math.max(1,physicalCount-1));
+    rrOcrProgressHook(18,'Offline OCR: detected '+physicalCount+' physical scan rows for '+n+' RR wagons…');
+
+    // Table-local field boxes after perspective correction. These coordinates
+    // are stable because the trapezoid has already been removed.
+    const cols={tare:[0.420,0.500],gross:[0.500,0.625],actual:[0.720,0.805]};
+    const rows=[];
+    await worker.setParameters({tessedit_pageseg_mode:'7',tessedit_char_whitelist:'0123456789. ',preserve_interword_spaces:'1'});
+    const rowGap=physicalCount>1?(lastY-firstY)/(physicalCount-1):step;
+    for(let r=0;r<physicalCount;r++){
+      const cy=centers[r]/TH;
+      const rf=(x0,x1)=>rowFieldCrop(table,cy,rowGap/TH,x0,x1,8);
+      let tt='',gg='',aa='';
+      try{tt=(await worker.recognize(rf(cols.tare[0],cols.tare[1]))).data.text||'';}catch(e){}
+      try{gg=(await worker.recognize(rf(cols.gross[0],cols.gross[1]))).data.text||'';}catch(e){}
+      try{aa=(await worker.recognize(rf(cols.actual[0],cols.actual[1]))).data.text||'';}catch(e){}
+
+      let tare=fieldNumber(tt,15,45);
+      let gross=fieldNumber(gg,15,95);
+      let actual=fieldNumber(aa,0,55);
+      // Fallback: one combined crop can rescue a field if the narrow crop
+      // happened to lose a digit/decimal.
+      if(tare==null||gross==null){
+        let combo=''; try{combo=(await worker.recognize(rf(0.415,0.625))).data.text||'';}catch(e){}
+        const z=readTG(combo); if(tare==null) tare=z.tare; if(gross==null) gross=z.gross;
+      }
+      if(actual!=null&&actual>55) actual=null; // single 65 is CC, not Actual
+      rows.push({row:r,tare,gross,actual});
+      if(rrOcrProgressHook) rrOcrProgressHook(18+Math.round((r+1)*77/physicalCount),'Offline OCR: reading physical row '+(r+1)+' of '+physicalCount+'…');
+    }
+
+    // The RR contains 55 loaded wagons, while the report contains 60 placed
+    // rows. Remove the zero/unloaded rows first, then map the remaining rows
+    // sequentially to the RR wagons. This prevents the old one-row-at-a-time
+    // matching from drifting after the first zero row.
+    const zero=rows.filter(v=>isZeroPhysicalRow(v));
+    let loaded=rows.filter(v=>!isZeroPhysicalRow(v));
+    if(physicalCount-n===zero.length){
+      // exact-count sanity check: use the detected zero rows as-is
+    } else if(physicalCount>n){
+      // If OCR failed to recognise one or more zero rows, identify additional
+      // candidates by the smallest actual/weight evidence, without ever
+      // dropping a row merely because OCR returned blank.
+      const needDrop=physicalCount-n;
+      const zset=new Set(zero.map(v=>v.row));
+      const extra=rows.filter(v=>!zset.has(v.row)).map(v=>({v,score:(v.actual!=null?v.actual:999)+(v.gross!=null&&v.tare!=null?Math.abs(v.gross-v.tare)*2:20)})).sort((a,b)=>a.score-b.score).slice(0,Math.max(0,needDrop-zero.length));
+      extra.forEach(x=>zset.add(x.v.row));
+      loaded=rows.filter(v=>!zset.has(v.row));
+    }
+    const chosen=loaded.slice(0,n);
+    const result={};
+    rrW.forEach((w,r)=>{const v=chosen[r];if(v&&(v.tare!=null||v.gross!=null||v.actual!=null))result[w]={tare:v.tare,gross:v.gross,actual:v.actual,dist:3};});
+    rr.ocr.pct=95;
+    rr.ocr.msg='Offline OCR read '+Object.keys(result).length+' of '+n+' RR rows from '+physicalCount+' physical rows; zero/unloaded rows were removed before RR mapping.';
+    return result;
+  }finally{rrOcrProgressHook=null;await worker.terminate();}
+}
+
+/* ---------- rendering ---------- */
+function statusOf(rr,w){ return rr.useReport? rowStatus(w) : 'rr'; }
+function render(preserveScroll=true){
+  const list=$('#list');
+  const scrollState=[];
+  if(preserveScroll){
+    document.querySelectorAll('.tablewrap').forEach((el,i)=>scrollState.push({i,top:el.scrollTop,left:el.scrollLeft}));
+  }
+  if(!state.rrs.length){list.innerHTML='<div class="empty">No RR loaded yet.</div>';updateBar();return;}
+  list.innerHTML=state.rrs.map(cardHtml).join('');
+  bindCards();updateBar();
+  if(preserveScroll){
+    document.querySelectorAll('.tablewrap').forEach((el,i)=>{
+      const s=scrollState[i]; if(s){el.scrollTop=s.top;el.scrollLeft=s.left;}
+    });
+  }
+}
+function cardHtml(rr){
+  if(rr.error) return '<section class="rr panel"><div class="rr-head"><h2>'+esc(rr.file)+'</h2><span class="badge b-bad">Not read</span><span class="meta">'+esc(rr.error)+'</span><span class="spacer"></span><button class="btn ghost small" data-act="remove" data-id="'+rr.id+'">Remove</button></div></section>';
+  const h=rr.head, rep=rr.useReport;
+  let badge;
+  if(rep){
+    const un=rr.wagons.filter(w=>!w.ok).length;
+    badge=un? '<span class="badge b-warn">Wagon report mode · '+un+' wagon'+(un>1?'s':'')+' to tick</span>':'<span class="badge b-ok">Wagon report mode · all ticked</span>';
+  } else badge='<span class="badge b-ok">RR weights used</span>';
+  const sumT=rr.wagons.reduce((a,w)=>a+(+w.tare||0),0), sumC=rr.wagons.reduce((a,w)=>a+(+w.chg||0),0), sumG=rr.wagons.reduce((a,w)=>a+(+w.gross||0),0);
+  let out='<section class="rr panel" data-id="'+rr.id+'"><div class="rr-head">'+
+    '<h2>RR '+esc(h.rrNo)+'</h2>'+badge+
+    '<span class="meta"><b>'+esc(h.from)+' → '+esc(h.to)+'</b> · '+esc(h.rrDate)+' · FNR '+esc(h.fnr)+' · '+rr.wagons.length+' wagons</span>'+
+    '<span class="spacer"></span><button class="btn ghost small" data-act="remove" data-id="'+rr.id+'">Remove</button></div>';
+  // report block
+  if(rr.needReport||rr.images.length||rep){
+    const done=rr.images.length&&!rr.ocr.running&&!rr.ocr.err;
+    out+='<div class="report'+(done?' done':'')+'"><div class="txt">'+
+      (rr.needReport? '<b>Sender’s Weight of '+esc(h.senderWeight)+' t is shown on this RR.</b>':'<b>Wagon report (optional)</b>')+
+      '<p>'+(rep?'Tare and Gross are taken from the wagon report. Chargeable Wt, Type, Owning Rly and wagon numbers come from the RR.':'RR weights are in use.')+'</p>'+
+      '<button class="btn small" data-act="pick" data-id="'+rr.id+'">'+(rr.images.length?'Add another photo':'Add wagon report photo')+'</button> '+
+      (rr.needReport&&!rep?'<button class="link" data-act="usereport" data-id="'+rr.id+'">Switch to wagon report weights</button>':'')+
+      (rr.needReport&&rep&&rr.images.length?'':'')+
+      (rep&&rr.needReport?' <button class="link" data-act="userr" data-id="'+rr.id+'">Use RR weights instead</button>':'')+
+      (!rr.needReport&&!rep?'':'')+
+      '<input type="file" accept="image/*" multiple hidden data-fin="'+rr.id+'">'+
+      (rr.ocr.running?'<div class="progress"><i style="width:'+rr.ocr.pct+'%"></i></div>':'')+
+      (rr.ocr.msg?'<div class="msg">'+esc(rr.ocr.msg)+'</div>':'')+
+      (rr.ocr.err?'<div class="msg err">'+esc(rr.ocr.err)+' <button class="link" data-act="retry" data-id="'+rr.id+'">Try again</button></div>':'')+
+      '</div><div class="thumbs">'+rr.images.map((im,i)=>'<img src="'+im.url+'" data-act="view" data-id="'+rr.id+'" data-i="'+i+'" alt="wagon report '+(i+1)+'" title="Click to enlarge">').join('')+'</div></div>';
+  }
+  // table
+  const showRep=rep&&rr.images.length;
+  if(rep&&!rr.images.length){
+    out+='<div class="empty">Add the wagon report photo above to fill Tare and Gross.</div>';
+  } else {
+    out+='<div class="tablewrap"><table><thead><tr><th class="n">Sr</th><th>Wagon Number</th><th>Type</th><th>Owning Rly</th>'+
+      '<th class="n">Tare</th><th class="n">Chargeable Wt</th><th class="n">Gross</th>'+
+      (showRep?'<th class="n">Report actual</th><th class="c">Check</th><th class="c"><input type="checkbox" data-act="tickall" data-id="'+rr.id+'" '+(rr.wagons.length&&rr.wagons.every(w=>w.ok)?'checked':'')+' title="Tick / untick all"></th>':'')+
+      '</tr></thead><tbody>';
+    rr.wagons.forEach((w,i)=>{
+      const st=statusOf(rr,w);
+      const cls=showRep?('st-'+st+(w.ok?' ticked':'')):'';
+      out+='<tr class="'+cls+'"><td class="n">'+w.sr+'</td><td class="n" style="text-align:left">'+esc(w.wagon)+'</td><td>'+esc(w.type)+'</td><td>'+esc(w.rly)+'</td>';
+      if(showRep){
+        out+='<td class="n"><input class="w'+(w.edited?' edited':'')+'" data-f="tare" data-id="'+rr.id+'" data-i="'+i+'" value="'+esc(w.tare==null?'':w.tare)+'" inputmode="decimal"></td>'+
+             '<td class="n">'+f2(w.chg)+'</td>'+
+             '<td class="n"><input class="w'+(w.edited?' edited':'')+'" data-f="gross" data-id="'+rr.id+'" data-i="'+i+'" value="'+esc(w.gross==null?'':w.gross)+'" inputmode="decimal"></td>'+
+             '<td class="n">'+(w.rep&&w.rep.actual!=null?f2(w.rep.actual):'—')+'</td>'+
+             '<td class="c stcell">'+(st==='ok'?'✔ Gross − Tare = Actual':st==='check'?'Check against photo':'Not found – enter manually')+'</td>'+
+             '<td class="c"><input type="checkbox" data-act="tick" data-id="'+rr.id+'" data-i="'+i+'" '+(w.ok?'checked':'')+'></td>';
+      } else {
+        out+='<td class="n">'+f2(w.tare)+'</td><td class="n">'+f2(w.chg)+'</td><td class="n">'+f2(w.gross)+'</td>';
+      }
+      out+='</tr>';
+    });
+    out+='</tbody><tfoot><tr><td></td><td>Total</td><td></td><td></td><td class="n">'+sumT.toFixed(2)+'</td><td class="n">'+sumC.toFixed(2)+'</td><td class="n">'+sumG.toFixed(2)+'</td>'+(showRep?'<td></td><td></td><td></td>':'')+'</tr></tfoot></table></div>';
+    if(showRep){
+      out+='<div class="legend"><span><i class="dot" style="background:var(--okbg);border:1px solid var(--ok)"></i>Gross − Tare matches the report’s Actual Weight</span>'+
+        '<span><i class="dot" style="background:var(--warnbg);border:1px solid var(--warn)"></i>Doesn’t add up – compare with the photo</span>'+
+        '<span><i class="dot" style="background:var(--badbg);border:1px solid var(--bad)"></i>Not found</span>'+
+        '<span style="flex:1"></span><button class="btn ghost small" data-act="tickok" data-id="'+rr.id+'">Tick all green rows</button></div>';
+    }
+  }
+  return out+'</section>';
+}
+function getRR(id){return state.rrs.find(r=>r.id===+id);}
+function bindCards(){
+  document.querySelectorAll('[data-act]').forEach(el=>{
+    const act=el.dataset.act;
+    if(act==='tickall'||act==='tick') el.addEventListener('change',()=>onAct(el));
+    else el.addEventListener('click',()=>onAct(el));
+  });
+  document.querySelectorAll('input.w').forEach(el=>el.addEventListener('change',()=>{
+    const rr=getRR(el.dataset.id), w=rr.wagons[+el.dataset.i]; const v=el.value.trim();
+    const n=v===''?null:parseFloat(v.replace(',','.'));
+    w[el.dataset.f]=(n==null||isNaN(n))?null:n; w.edited=true; w.ok=false;
+
+    // Do not rebuild the whole table on every correction. Re-rendering was
+    // causing the scroll container to jump back to the top after each entry.
+    const tr=el.closest('tr');
+    if(tr){
+      tr.classList.remove('st-ok','st-check','st-missing','ticked');
+      const st=rowStatus(w);
+      tr.classList.add('st-'+st);
+      if(w.ok) tr.classList.add('ticked');
+      const cell=tr.querySelector('.stcell');
+      if(cell) cell.textContent=st==='ok'?'✔ Gross − Tare = Actual':st==='check'?'Check against photo':'Not found – enter manually';
+    }
+    updateBar();
+  }));
+  document.querySelectorAll('input[data-fin]').forEach(el=>el.addEventListener('change',()=>{
+    const rr=getRR(el.dataset.fin); attachImages(rr,[...el.files]); el.value='';
+  }));
+}
+function onAct(el){
+  const rr=getRR(el.dataset.id), act=el.dataset.act;
+  if(act==='remove'){ state.rrs=state.rrs.filter(r=>r.id!==rr.id); render(); }
+  else if(act==='pick'){ document.querySelector('input[data-fin="'+rr.id+'"]').click(); }
+  else if(act==='view'){ openViewer(rr,+el.dataset.i); }
+  else if(act==='retry'){ runOcr(rr); }
+  else if(act==='tick'){ rr.wagons[+el.dataset.i].ok=el.checked; setTimeout(render,0); }
+  else if(act==='tickall'){ rr.wagons.forEach(w=>w.ok=el.checked); setTimeout(render,0); }
+  else if(act==='tickok'){ rr.wagons.forEach(w=>{ if(rowStatus(w)==='ok') w.ok=true; }); render(); }
+  else if(act==='usereport'){ rr.useReport=true; render(); }
+  else if(act==='userr'){ rr.useReport=false; rr.wagons.forEach(w=>{w.tare=w.rrTare;w.gross=w.rrGross;}); render(); }
+}
+function updateBar(){
+  const ok=state.rrs.filter(r=>!r.error);
+  $('#export').disabled=!ok.length; $('#clear').disabled=!state.rrs.length;
+  if(!ok.length){ $('#barinfo').textContent='Nothing to export yet.'; return; }
+  const pending=ok.filter(r=>r.useReport&&(r.wagons.some(w=>!w.ok)||!r.images.length)).length;
+  $('#barinfo').innerHTML='<b>'+ok.length+' RR'+(ok.length>1?'s':'')+'</b> → '+ok.length+' sheet'+(ok.length>1?'s':'')+
+    (pending?' · <span style="color:var(--warn)">'+pending+' RR'+(pending>1?'s':'')+' still need wagon report weights ticked</span>':' · ready to export');
+}
+$('#clear').addEventListener('click',()=>{ if(confirm('Remove all loaded RRs?')){state.rrs=[];render();} });
+$('#export').addEventListener('click',()=>{
+  const ok=state.rrs.filter(r=>!r.error);
+  const issues=[];
+  ok.forEach(r=>{
+    if(!r.useReport) return;
+    if(!r.images.length) issues.push('RR '+r.head.rrNo+': no wagon report added');
+    else{
+      const un=r.wagons.filter(w=>!w.ok).length, blank=r.wagons.filter(w=>w.tare==null||w.gross==null).length;
+      if(un) issues.push('RR '+r.head.rrNo+': '+un+' wagon(s) not ticked');
+      if(blank) issues.push('RR '+r.head.rrNo+': '+blank+' wagon(s) with empty Tare/Gross');
+    }
+  });
+  if(issues.length && !confirm('Some weights are not confirmed:\n\n'+issues.join('\n')+'\n\nExport anyway?')) return;
+  const wb=buildWorkbook(XLSX,ok);
+  const d=new Date(),p=n=>String(n).padStart(2,'0');
+  XLSX.writeFile(wb,'PPA_MET_COKE_RR_'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes())+'.xlsx');
+});
+
+/* ---------- viewer ---------- */
+function openViewer(rr,i){ $('#vimg').src=rr.images[i].url; $('#vtitle').textContent='Wagon report – RR '+rr.head.rrNo; $('#vzoom').value=100; $('#vimg').style.width='100%'; $('#viewer').classList.add('on'); }
+$('#vzoom').addEventListener('input',e=>{$('#vimg').style.width=e.target.value+'%';});
+$('#vclose').addEventListener('click',()=>$('#viewer').classList.remove('on'));
+document.addEventListener('keydown',e=>{if(e.key==='Escape')$('#viewer').classList.remove('on');});
+})();
+</script>
+</body>
+</html>
